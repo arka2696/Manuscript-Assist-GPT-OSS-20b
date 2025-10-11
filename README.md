@@ -12,8 +12,6 @@ Here’s your extremely detailed setup guide for the manuscript assistant along 
 
 **Mock‑up of the interface layout**
 
-The image below illustrates a clean, modern dashboard with a sidebar for tools (outline, rewrite, citations, etc.), a top navigation bar, and a main editing/chat area.
-
 ![Manuscript assistant interface concept]({{file\:file-3S8XRbtKqCYK4brBvz97L9}})
 
 **Full setup instructions**
