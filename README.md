@@ -14,8 +14,6 @@ Here’s your extremely detailed setup guide for the manuscript assistant along 
 
 Everything—from hardware requirements to Slurm scripts, RAG indexing, citation handling, port forwarding, and advanced options—is covered step by step in this comprehensive guide:
 
-{{file:file-SpBaBUfwdFFuUZ56PiUSFL}}
-
 This should give you everything you need to get up and running. If you need any tweaks for your specific cluster (partition names, GPU counts) or further customization, just let me know!
 <img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/ddfc0bf0-f238-422a-a70c-bf0b665dbcf4" />
 
