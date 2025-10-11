@@ -179,3 +179,373 @@ You now have a **cluster-ready manuscript assistant**:
 - Deployment: SLURM, Docker, SSH tunnel
 
 This tool should greatly improve your **productivity in writing and research**.
+
+
+Here you go — a GitHub-friendly, copy-paste-ready Markdown guide. It’s structured, scannable, and sticks to short phrases in tables. You can drop this into `README.md` or `docs/SETUP.md`.
+
+---
+
+# Manuscript Assistant (gpt-oss-20b)
+
+**Self-hosted manuscript writing assistant** with:
+
+* **LLM**: `openai/gpt-oss-20b` (Harmony chat format; reasoning levels)
+* **Inference**: vLLM (OpenAI-compatible API)
+* **Backend**: FastAPI (JWT auth, RAG, citations)
+* **Frontend**: React (Vite dev server / static build)
+* **RAG**: FAISS vector store + sentence-transformers
+* **Citations**: BibTeX → CSL (e.g., Nature)
+
+---
+
+## Table of Contents
+
+* [Why gpt-oss-20b](#why-gpt-oss-20b)
+* [Architecture](#architecture)
+* [Requirements](#requirements)
+* [Quick Start](#quick-start)
+* [1) Download & Layout](#1-download--layout)
+* [2) Environment & Secrets](#2-environment--secrets)
+* [3) GPU Node: vLLM Server](#3-gpu-node-vllm-server)
+* [4) CPU Node: Backend](#4-cpu-node-backend)
+* [5) Frontend (React)](#5-frontend-react)
+* [6) RAG Index (PDF → FAISS)](#6-rag-index-pdf--faiss)
+* [7) Citations (BibTeX → CSL)](#7-citations-bibtex--csl)
+* [8) Slurm Jobs](#8-slurm-jobs)
+* [9) SSH Port Forwarding](#9-ssh-port-forwarding)
+* [10) Using the App](#10-using-the-app)
+* [Advanced](#advanced)
+* [Troubleshooting](#troubleshooting)
+* [Security](#security)
+
+---
+
+## Why gpt-oss-20b
+
+* **Open-weight**; Apache-2.0
+* **Reasoning levels**: `low | medium | high`
+* **Tool-use ready**; function calling
+* **MoE**; ~21B params; ~3.6B active per token
+* **Fits** on 16–40 GB GPUs (better with ≥40 GB)
+
+---
+
+## Architecture
+
+```
+ ┌───────────────────────────────┐
+ │ Laptop Browser (React UI)     │  ← chat / tools / uploads
+ └───────────────┬───────────────┘
+                 │ HTTPS/SSH tunnel
+ ┌───────────────▼───────────────┐
+ │ FastAPI Backend (JWT, RAG,    │  :8000/8002
+ │ citations, OpenAI client)     │
+ └───────────────┬───────────────┘
+                 │ REST (OpenAI API)
+ ┌───────────────▼───────────────┐
+ │ vLLM Server (gpt-oss-20b)     │  :8001/v1
+ │ GPU node(s), tensor parallel  │
+ └───────────────────────────────┘
+```
+
+---
+
+## Requirements
+
+| Component | Minimum             | Notes                                                |
+| --------- | ------------------- | ---------------------------------------------------- |
+| GPU node  | 1× A100/H100 ≥40 GB | 20B can run on 16 GB; more VRAM = better concurrency |
+| CPU node  | 4–8 vCPU; 32 GB RAM | Backend + embeddings                                 |
+| Frontend  | Node 18+            | Dev: Vite; Prod: static host                         |
+| Storage   | ~60 GB              | Weights + FAISS + uploads                            |
+| Scheduler | Slurm (example)     | Adapt if PBS/others                                  |
+| Network   | SSH + port forward  | Tunnel to laptop                                     |
+
+> If you have multiple GPUs on one node, use tensor parallel (`--tensor-parallel-size N`).
+
+---
+
+## Quick Start
+
+```bash
+# 0) unzip repo and cd
+unzip manuscript-assistant.zip -d manuscript-assistant
+cd manuscript-assistant
+
+# 1) copy env
+cp .env.example .env
+# edit .env → set a strong JWT_SECRET; check VLLM_ENDPOINT/MODEL_NAME
+
+# 2) start vLLM (GPU node)
+sbatch slurm/run_vllm_gptoss20b.sbatch
+
+# 3) start backend (CPU node)
+sbatch slurm/run_backend.sbatch
+
+# 4) start frontend (local dev)
+cd frontend && npm install && npm run dev
+
+# 5) laptop: SSH tunnel (example)
+./scripts/tunnel.sh USER LOGIN_NODE 7001 8000
+
+# open UI
+# dev: http://localhost:5173  (or http://localhost:7001 if tunneled)
+# api: http://localhost:8000
+```
+
+---
+
+## 1) Download & Layout
+
+```bash
+wget <ZIP_URL> -O manuscript-assistant.zip
+unzip manuscript-assistant.zip -d manuscript-assistant
+cd manuscript-assistant
+```
+
+**Tree (key parts):**
+
+* `backend/` — FastAPI app, RAG, citations
+* `frontend/` — React UI (Vite)
+* `slurm/` — batch scripts (vLLM, backend)
+* `scripts/` — SSH tunnel, helpers
+* `docker/` — optional images
+* `.env.example` — config template
+
+---
+
+## 2) Environment & Secrets
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+**Must set:**
+
+* `JWT_SECRET` → long random string
+* `VLLM_ENDPOINT` → e.g. `http://gpu-node:8001/v1`
+* `MODEL_NAME` → `openai/gpt-oss-20b`
+* `REASONING_LEVEL` → `low|medium|high`
+* `INDEX_DIR`, `UPLOAD_DIR` → keep defaults or change
+* `CSL_STYLE` → `backend/csl_styles/nature.csl` (or your style)
+
+---
+
+## 3) GPU Node: vLLM Server
+
+Install (example with `uv`):
+
+```bash
+# on GPU node
+uv venv --python 3.12 --seed
+source .venv/bin/activate
+
+uv pip install --pre vllm==0.10.1+gptoss \
+  --extra-index-url https://wheels.vllm.ai/gpt-oss/ \
+  --extra-index-url https://download.pytorch.org/whl/nightly/cu128 \
+  --index-strategy unsafe-best-match
+```
+
+Run vLLM:
+
+```bash
+# single GPU, default port 8000
+vllm serve openai/gpt-oss-20b
+
+# multi-GPU (e.g., 4 GPUs; custom port)
+vllm serve openai/gpt-oss-20b \
+  --tensor-parallel-size 4 \
+  --port 8001
+```
+
+Check:
+
+* API root: `http://<gpu-node>:8001/v1`
+* Keep running (or use Slurm job below).
+
+---
+
+## 4) CPU Node: Backend
+
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# .env lives one level up; backend reads process env
+cd ..
+export $(grep -v '^#' .env | xargs)
+
+# run backend (default :8000)
+cd backend
+python -m uvicorn backend.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-8000}
+```
+
+---
+
+## 5) Frontend (React)
+
+**Dev mode:**
+
+```bash
+cd frontend
+npm install
+npm run dev   # http://localhost:5173
+```
+
+**Prod build (static):**
+
+```bash
+npm run build
+npx serve -s dist -l 3000
+```
+
+If serving frontend on the cluster, tunnel port `5173` (dev) or `3000` (prod) to your laptop.
+
+---
+
+## 6) RAG Index (PDF → FAISS)
+
+1. Put PDFs in:
+
+```
+backend/storage/uploads/
+```
+
+2. Start backend once (loads libs and creates dirs).
+
+3. Use the **UI upload** to ingest PDFs
+   *or* run your embedding flow (if provided) to populate FAISS:
+
+* Default embedding model: `sentence-transformers/all-MiniLM-L6-v2`
+* FAISS index: `backend/storage/faiss_index/index.faiss`
+* Metadata: `meta.jsonl`
+
+> The backend exposes `/rag/ingest` and `/rag/query`; the UI calls these for you.
+
+---
+
+## 7) Citations (BibTeX → CSL)
+
+* Put your BibTeX file in `backend/storage/`
+* Load via UI (bib upload), or the backend’s `/refs/upload`
+* Select CSL style (place CSL file in `backend/csl_styles/` and set `CSL_STYLE` in `.env`)
+
+---
+
+## 8) Slurm Jobs
+
+**vLLM (GPU):** `slurm/run_vllm_gptoss20b.sbatch`
+
+```bash
+sbatch slurm/run_vllm_gptoss20b.sbatch
+```
+
+**Backend (CPU):** `slurm/run_backend.sbatch`
+
+```bash
+sbatch slurm/run_backend.sbatch
+```
+
+*Tips:*
+
+* Adapt `--partition`, `--gpus`, `--cpus-per-task`, `--mem`, and module loads
+* For multi-GPU, set `--tensor-parallel-size N` in the vLLM command
+
+---
+
+## 9) SSH Port Forwarding
+
+Typical mapping:
+
+| Service        | Node            | Remote Port | Local Port |
+| -------------- | --------------- | ----------- | ---------- |
+| vLLM           | `gpu-node`      | 8001        | 8001       |
+| Backend        | `backend-node`  | 8000        | 8000       |
+| Frontend (dev) | `frontend-node` | 5173        | 7001       |
+
+**Example (single login hop):**
+
+```bash
+ssh -N \
+  -L 8001:gpu-node:8001 \
+  -L 8000:backend-node:8000 \
+  -L 7001:frontend-node:5173 \
+  <user>@<login-node>
+```
+
+Open:
+
+* UI: `http://localhost:7001`
+* API: `http://localhost:8000`
+
+---
+
+## 10) Using the App
+
+* **Login** (JWT; set `JWT_SECRET` in `.env`)
+* **Chat**: free-form Q&A; select **Reasoning level**
+* **Outline**: title + aims → structured outline
+* **Rewrite**: highlight → `concise`, `formal`, `reviewer-response`, `latex`
+* **RAG**: upload PDFs → ask questions → answers with source snippets
+* **Citations**: upload `.bib` → format with CSL → insert into text
+
+---
+
+## Advanced
+
+* **Bigger model**: switch to `openai/gpt-oss-120b` in `.env`; update vLLM flags
+* **Transformers Serve** (alt to vLLM):
+
+  ```bash
+  pip install -U transformers kernels torch
+  transformers serve --model openai/gpt-oss-20b --host 0.0.0.0 --port 8001
+  ```
+
+  Set `VLLM_ENDPOINT=http://127.0.0.1:8001/v1`
+* **Tensor parallel**: `--tensor-parallel-size N` (single node, multi-GPU)
+* **Frontend config**: use `VITE_API_URL` if you want to hard-wire the backend URL
+
+---
+
+## Troubleshooting
+
+* **401 Unauthorized**: wrong token; set strong `JWT_SECRET`; re-login
+* **CORS errors**: serve frontend and backend on compatible origins; enable CORS in backend
+* **OOM on GPU**: reduce sequence length, `--gpu-memory-utilization`, or parallelize across GPUs
+* **Timeouts**: check tunnels, ports, node names, firewall rules
+* **No RAG hits**: re-ingest PDFs; check FAISS paths; verify embedding model
+
+---
+
+## Security
+
+* Keep services **private** (SSH tunnels or VPN)
+* Use long, unique `JWT_SECRET`
+* Rotate secrets periodically
+* If exposing externally: TLS (reverse proxy) + SSO/OIDC, rate limiting, logs/alerts
+
+---
+
+## License
+
+* Code: your repo’s license
+* Models: follow `openai/gpt-oss-20b` terms
+* CSL styles: per their licenses
+
+---
+
+### Badges (optional)
+
+```
+![GPU](https://img.shields.io/badge/Requires-GPU-blue)
+![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
+![Node](https://img.shields.io/badge/Node-18%2B-green)
+```
+
+---
+
+If you want, I can turn this into `docs/SETUP.md` and update your repo’s `README.md` with a concise overview + links to this guide.
+
