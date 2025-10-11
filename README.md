@@ -12,10 +12,6 @@ Here’s your extremely detailed setup guide for the manuscript assistant along 
 
 **Mock‑up of the interface layout**
 
-![Manuscript assistant interface concept]({{file\:file-3S8XRbtKqCYK4brBvz97L9}})
-
-**Full setup instructions**
-
 Everything—from hardware requirements to Slurm scripts, RAG indexing, citation handling, port forwarding, and advanced options—is covered step by step in this comprehensive guide:
 
 {{file:file-SpBaBUfwdFFuUZ56PiUSFL}}
