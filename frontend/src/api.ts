@@ -46,3 +46,7 @@ export async function cite(keys: string[]) {
   const { data } = await axios.post(`${BASE}/refs/cite`, { keys }, { headers: auth() });
   return data.bibliography as string;
 }
+export async function streamLogs() {
+  const { data } = await axios.get(`${BASE}/logs/stream`, { headers: auth() });
+  return data;
+}

@@ -7,5 +7,18 @@ HOST=${2:?login_node}
 LFRONT=${3:-7001}
 LBACK=${4:-8000}
 
-# If frontend runs on cluster port 5173, add another -L accordingly
-ssh -N       -L ${LBACK}:127.0.0.1:8000       -L ${LFRONT}:127.0.0.1:5173       ${USER}@${HOST}
+# Core ports (Frontend and Backend)
+ssh_cmd="ssh -N \
+  -L ${LBACK}:127.0.0.1:8000 \
+  -L ${LFRONT}:127.0.0.1:5173 \
+  -L 8001:127.0.0.1:8001 \
+  -L 8002:127.0.0.1:8002 \
+  -L 8003:127.0.0.1:8003 \
+  -L 8004:127.0.0.1:8004 \
+  ${USER}@${HOST}"
+
+echo "Starting tunnel... (Ctrl+C to stop)"
+echo "=> Frontend UI: http://localhost:${LFRONT}"
+echo "=> Backend API: http://localhost:${LBACK}"
+echo "=> Agent Models (Raw API): ports 8001, 8002, 8003, 8004"
+eval $ssh_cmd

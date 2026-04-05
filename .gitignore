@@ -1,0 +1,32 @@
+# Environment variables
+.env
+__pycache__/
+*.pyc
+
+# Virtual Environments
+venv/
+env/
+.venv/
+
+# Large Model Files (CRITICAL to block)
+models/*.gguf
+models/*.bin
+models/*.pth
+models/*.pt
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Storage / RAG Index
+backend/storage/uploads/
+backend/storage/faiss_index/
+
+# System execution logs
+slurm_logs/
+*.log
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.eslintcache
