@@ -8,7 +8,7 @@ It utilizes a **LangGraph** backend to orchestrate a team of specialized AI agen
 
 ---
 
-## 🛠️ Step 1: Install and Compile `llama.cpp`
+## Step 1: Install and Compile `llama.cpp`
 
 Yes, **you do need to install `llama.cpp`** on your workstation first. This is the ultra-fast execution engine that will run your AI models. Because you have an Nvidia GPU and AVX2-capable Xeons, you must compile it with CUDA support to enable layer offloading.
 
@@ -35,7 +35,7 @@ Yes, **you do need to install `llama.cpp`** on your workstation first. This is t
 
 ---
 
-## 🧠 Step 2: Download the GGUF Models
+## Step 2: Download the GGUF Models
 
 The architecture expects multiple distinct agent models to fit inside your 128GB of RAM. You will need to download compressed `.gguf` weights from HuggingFace and place them inside a `models/` directory in this project.
 
@@ -66,7 +66,7 @@ The architecture expects multiple distinct agent models to fit inside your 128GB
 
 ---
 
-## ⚙️ Step 3: Configure the Core Environment
+## Step 3: Configure the Core Environment
 
 1. Rename the environment template to activate it:
    ```bash
@@ -76,7 +76,7 @@ The architecture expects multiple distinct agent models to fit inside your 128GB
 
 ---
 
-## 🚀 Step 4: Launching the System
+## Step 4: Launching the System
 
 You must start the system in layers (Agents -> Backend API -> User Interface).
 
@@ -105,7 +105,7 @@ npm run dev
 
 ---
 
-## 🛠️ Performance Tuning & Resolved Architecture Errors
+## Performance Tuning & Resolved Architecture Errors
 
 The shift from the original HPC cluster baseline to a dedicated **Dual-Socket Xeon Workstation (with 8GB Quadro M4000 GPU)** revealed several edge-cases that have been successfully engineered and bypassed:
 
@@ -127,7 +127,7 @@ The shift from the original HPC cluster baseline to a dedicated **Dual-Socket Xe
 
 ---
 
-## 💻 Step 5: Connecting from your Laptop
+## Step 5: Connecting from your Laptop
 
 If you are working from a laptop and want to access the assistant running on the workstation, use the included SSH tunnel script.
 
