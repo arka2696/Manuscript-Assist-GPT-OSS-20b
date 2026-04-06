@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/Numascribe.jpg" alt="NumaScribe Logo" width="280"/>
+  <img src="images/Numascribe.jpg" alt="NumaScribe Logo" width="420"/>
 </p>
 
 <h1 align="center">NumaScribe</h1>
