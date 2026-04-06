@@ -1,0 +1,68 @@
+Bootstrap: docker
+From: nvidia/cuda:12.1.1-devel-ubuntu22.04
+
+%environment
+    export LC_ALL=C
+    export PATH=/usr/local/bin:$PATH
+    export DEBIAN_FRONTEND=noninteractive
+    export GGML_CUDA=1
+
+%post
+    # Setup noninteractive ENV for apt-get
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ=Etc/UTC
+
+    # 1. Core OS Dependencies
+    apt-get update && apt-get install -y --no-install-recommends \
+        software-properties-common \
+        build-essential \
+        wget \
+        curl \
+        git \
+        cmake \
+        gcc-10 g++-10
+
+    # 2. Python 3.12 Backend Dependencies
+    add-apt-repository ppa:deadsnakes/ppa -y
+    apt-get update && apt-get install -y --no-install-recommends \
+        python3.12 \
+        python3.12-venv \
+        python3.12-dev \
+        python3-pip
+    
+    # Establish default python3
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
+    
+    # Upgrade PIP & Install Backend Libraries (We don't install llama-cpp-python as we use the raw C++ binary!)
+    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12
+    python3.12 -m pip install --no-cache-dir \
+        fastapi uvicorn pydantic python-multipart \
+        langgraph langchain langchain-core \
+        faiss-cpu sentence-transformers \
+        pypdf bibtexparser citeproc-py \
+        httpx biopython python-jose passlib bcrypt
+
+    # 3. Node.js v20 Frontend Dependencies
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    apt-get install -y nodejs
+
+    # 4. Compile llama.cpp Engine natively with CUDA support
+    cd /opt
+    git clone https://github.com/ggml-org/llama.cpp.git
+    cd llama.cpp
+    # Compile strictly using gcc-10 to match CUDA limits on older HPC architectures
+    cmake -B build -DGGML_CUDA=ON -DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10 -DCMAKE_CUDA_HOST_COMPILER=g++-10
+    cmake --build build --config Release -j $(nproc)
+    
+    # Export binary globally
+    cp build/bin/llama-server /usr/local/bin/
+
+    # Cleanup
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+
+%runscript
+    echo "Welcome to the Multi-Agent Manuscript HPC Container!"
+    echo "Usage Examples:"
+    echo "  singularity exec --nv manuscript.sif llama-server --model /models/... "
+    echo "  singularity exec manuscript.sif uvicorn main:app --host 0.0.0.0 --port 8000"
