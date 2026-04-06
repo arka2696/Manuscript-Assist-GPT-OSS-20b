@@ -30,3 +30,6 @@ slurm_logs/
 frontend/node_modules/
 frontend/dist/
 frontend/.eslintcache
+
+# Singularity Container Binaries (CRITICAL - 3GB+)
+*.sif

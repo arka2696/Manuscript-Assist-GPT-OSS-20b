@@ -1,5 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { login, setToken, chat, chatReasoned, ragIngest, ragQuery, uploadBib, cite, streamLogs } from "./api";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
+import 'katex/dist/katex.min.css';
 
 export default function App() {
   const [username, setU] = useState("andrew");
@@ -127,7 +133,11 @@ export default function App() {
               {messages.map((m, i) => (
                 <div key={i} style={{ marginBottom: "16px", padding: "12px", backgroundColor: "#fff", borderRadius: "6px", border: "1px solid #e5e7eb" }}>
                   <b style={{ color: m.role === "assistant" ? "#1f2937" : "#4b5563", fontSize: "13px", textTransform: "uppercase" }}>{m.role === 'assistant' ? 'Agent Node' : 'You'}</b>
-                  <div style={{ marginTop: "4px", fontSize: "15px", lineHeight: "1.6" }}>{m.content}</div>
+                  <div style={{ marginTop: "4px", fontSize: "15px", lineHeight: "1.6" }}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
+                      {m.content}
+                    </ReactMarkdown>
+                  </div>
                   {m.image && <div style={{ marginTop: "8px", fontSize: "12px", color: "#6b7280" }}>📎 Attached: {m.image}</div>}
                 </div>
               ))}

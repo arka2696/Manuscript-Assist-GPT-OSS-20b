@@ -50,12 +50,30 @@ From: nvidia/cuda:12.1.1-devel-ubuntu22.04
     cd /opt
     git clone https://github.com/ggml-org/llama.cpp.git
     cd llama.cpp
-    # Compile strictly using gcc-10 to match CUDA limits on older HPC architectures
-    cmake -B build -DGGML_CUDA=ON -DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10 -DCMAKE_CUDA_HOST_COMPILER=g++-10
+
+    # ---- CRITICAL FIX for Singularity isolated builds ----
+    # The CUDA devel image ships /usr/local/cuda/lib64/stubs/libcuda.so
+    # but the linker resolves the SONAME "libcuda.so.1" which does NOT exist
+    # inside the container (it lives on the HOST and is injected at runtime by --nv).
+    # We create a symlink so cmake can link, then delete it after build.
+    ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH
+
+    # Compile with gcc-10 and explicitly tell the linker where the CUDA stubs live
+    cmake -B build \
+        -DGGML_CUDA=ON \
+        -DCMAKE_C_COMPILER=gcc-10 \
+        -DCMAKE_CXX_COMPILER=g++-10 \
+        -DCMAKE_CUDA_HOST_COMPILER=g++-10 \
+        -DCMAKE_EXE_LINKER_FLAGS="-L/usr/local/cuda/lib64/stubs" \
+        -DCMAKE_SHARED_LINKER_FLAGS="-L/usr/local/cuda/lib64/stubs"
     cmake --build build --config Release -j $(nproc)
-    
+
     # Export binary globally
     cp build/bin/llama-server /usr/local/bin/
+
+    # Remove the fake symlink so the real host driver is used at runtime via --nv
+    rm -f /usr/local/cuda/lib64/stubs/libcuda.so.1
 
     # Cleanup
     apt-get clean

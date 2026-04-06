@@ -124,6 +124,8 @@ The shift from the original HPC cluster baseline to a dedicated **Dual-Socket Xe
    - *Resolution:* Rewrote `backend/agents.py` to intercept the LangGraph feedback loop, squashing all Reviewer critiques into a single contiguous `User` message, entirely preventing the Llama format validation crash.
 5. **Real-Time Log Streamer (UI)**
    - *Feature Added:* The transition to 14-thread CPU restraints meant that a single draft generation could pause the UI for 2–3 minutes. We built a live terminal-emulator in `React` (`App.tsx`) attached to a `/logs/stream` FastAPI endpoint that continuously tails the hardware outputs in real-time, providing immediate visual feedback of the models executing.
+6. **Scientific Markdown Rendering (UI)**
+   - *Feature Added:* The frontend was originally outputting raw, unformatted AI text blocks. We integrated `react-markdown` along with `remark-math` and `rehype-katex` to beautifully render structured scientific formatting, bold elements, headers, and complex LaTeX equations natively in the browser.
 
 ---
 
