@@ -1,59 +1,216 @@
-# HPC Singularity Deployment Pipeline
+# HPC Singularity Deployment on VSC (Vlaams Supercomputer Centrum)
 
-This guide outlines exactly how to deploy the Multi-Agent Manuscript system from your workstation to an HPC cluster using Singularity containers securely.
+Complete guide to deploy the Multi-Agent Manuscript system on a VSC cluster (KU Leuven, UGent, UAntwerpen, or VUB) using Singularity containers.
+
+---
+
+## Phase 0: SSH Key Setup (One-Time Only)
+
+Before anything else, you need an SSH key pair registered with your VSC account.
+
+### Step 0.1: Generate your SSH key
+If you do NOT already have a VSC SSH key, generate one on your Linux workstation:
+```bash
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_vsc
+```
+When prompted for a passphrase, type a strong password (you will be asked for this every time you connect).
+
+### Step 0.2: Upload the PUBLIC key to your VSC Account
+1. Go to https://account.vscentrum.be/
+2. Log in with your institutional credentials.
+3. Navigate to **"Edit Account"** → **"SSH Keys"**.
+4. Paste the contents of your PUBLIC key file:
+   ```bash
+   cat ~/.ssh/id_rsa_vsc.pub
+   ```
+   Copy the entire output and paste it into the web form. Click **Save**.
+5. Wait ~30 minutes for the key to be synchronized with all VSC login nodes.
+
+---
 
 ## Phase 1: Build the Container Locally
-You usually cannot run `sudo singularity build` on HPC login nodes due to root security locks. You must build the `.sif` file on your personal workstation first.
-1. On your personal Linux workstation, navigate to the Singularity folder:
-   ```bash
-   cd ~/Desktop/Manuscript-Assist-GPT-OSS-20b/Singularity
-   chmod +x hpc_build.sh
-   ./hpc_build.sh
-   ```
-2. Wait 10–15 minutes. It will download CUDA, Python 3.12, Node 20, and compile `llama.cpp` using GCC-10. You will now have an encapsulated binary called `manuscript_hpc.sif`.
 
-## Phase 2: Transfer to HPC
-Push your code and the container to the HPC's high-speed parallel storage (e.g. `/scratch` or `/work`).
+You CANNOT run `sudo singularity build` on the VSC login nodes. Build the `.sif` on your personal workstation first.
+
 ```bash
-rsync -avzP ~/Desktop/Manuscript-Assist-GPT-OSS-20b/ your_username@hpc.domain.edu:/scratch/your_username/Manuscript-Assist-GPT-OSS-20b/
+cd ~/Desktop/Manuscript-Assist-GPT-OSS-20b/Singularity
+chmod +x hpc_build.sh
+./hpc_build.sh
+```
+Wait 10–15 minutes. You will now have `manuscript_hpc.sif` (~3 GB).
+
+---
+
+## Phase 2: Connect to the VSC Cluster via SSH
+
+Open a terminal on your workstation and connect to the VSC login node.
+
+**Replace `vscXXXXX` with your actual VSC username** (e.g., `vsc35000`).
+**Replace the login node** with the one matching your institution:
+
+| Institution | Login Node |
+|---|---|
+| KU Leuven (wICE) | `login.hpc.kuleuven.be` |
+| KU Leuven (Genius) | `login.hpc.kuleuven.be` |
+| UGent (Hortense) | `login.hpc.ugent.be` |
+| UAntwerpen (Vaughan) | `login.hpc.uantwerpen.be` |
+| VUB (Hydra) | `login.hpc.vub.be` |
+
+```bash
+ssh -i ~/.ssh/id_rsa_vsc vscXXXXX@login.hpc.kuleuven.be
 ```
 
-## Phase 3: Download Models Directly to HPC Scratch
-SSH into your HPC. Go to your scratch directory and download the models directly from HuggingFace to your remote scratch disk. **Do not upload them from your laptop** (uploading 60GB will take hours).
+The first time you connect, you will be asked to verify the host authenticity. Type `yes` and press Enter.
+
+### Tip: Avoid retyping the passphrase every time
+Use the SSH agent to cache your key in memory:
 ```bash
-ssh your_username@hpc.domain.edu
-mkdir -p /scratch/your_username/models
-cd /scratch/your_username/models
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_rsa_vsc
+```
+
+### Tip: Create an SSH config shortcut
+Add this to `~/.ssh/config` on your local workstation:
+```
+Host vsc
+    HostName login.hpc.kuleuven.be
+    User vscXXXXX
+    IdentityFile ~/.ssh/id_rsa_vsc
+    ForwardX11 yes
+```
+After this, you can simply type `ssh vsc` to connect!
+
+---
+
+## Phase 3: Transfer Code and Container to the Cluster
+
+From your **local workstation** terminal (NOT the VSC terminal), push your entire project:
+
+```bash
+rsync -avzP --exclude='*.gguf' --exclude='venv/' --exclude='node_modules/' \
+    ~/Desktop/Manuscript-Assist-GPT-OSS-20b/ \
+    vscXXXXX@login.hpc.kuleuven.be:/scratch/leuven/XXX/vscXXXXX/Manuscript-Assist-GPT-OSS-20b/
+```
+
+> **Important:** Replace `/scratch/leuven/XXX/vscXXXXX/` with your actual scratch path.
+> You can find your scratch path by running `echo $VSC_SCRATCH` on the login node.
+
+Then transfer the container separately (it's ~3 GB):
+```bash
+rsync -avzP ~/Desktop/Manuscript-Assist-GPT-OSS-20b/Singularity/manuscript_hpc.sif \
+    vscXXXXX@login.hpc.kuleuven.be:$VSC_SCRATCH/Manuscript-Assist-GPT-OSS-20b/Singularity/
+```
+
+---
+
+## Phase 4: Download Models Directly on the HPC
+
+SSH into the cluster and download the models directly to the high-speed scratch disk.
+**Do NOT upload them from your workstation** (60 GB over SSH will take hours).
+
+```bash
+ssh vsc   # or: ssh -i ~/.ssh/id_rsa_vsc vscXXXXX@login.hpc.kuleuven.be
+
+mkdir -p $VSC_SCRATCH/models
+cd $VSC_SCRATCH/models
 
 wget https://huggingface.co/ggml-org/gemma-4-31B-it-GGUF/resolve/main/gemma-4-31B-it-Q4_K_M.gguf
 wget https://huggingface.co/ggml-org/Ministral-3-14B-Reasoning-2512-GGUF/resolve/main/Ministral-3-14B-Reasoning-2512-Q8_0.gguf
 wget https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-e4b-it-Q4_K_M.gguf
 ```
 
-## Phase 4: Launching on SLURM
-1. Open the `/scratch/your_username/Manuscript-Assist-GPT-OSS-20b/Singularity/run_agents.sbatch` file on the HPC.
-2. Update the `PROJECT_DIR` and `MODELS_DIR` paths at the top of the file to match your actual HPC directories!
-3. Ensure you are in the project root directory when submitting, so the logs route correctly:
-   ```bash
-   cd /scratch/your_username/Manuscript-Assist-GPT-OSS-20b
-   sbatch Singularity/run_agents.sbatch
-   ```
-4. Find out which compute node your job is running on:
-   ```bash
-   squeue -u your_username
-   ```
-   *(Look under the `NODELIST` column. For example, it might say `gpu-node-40`)*.
+---
 
-## Phase 5: Connecting from your Laptop
-Because the compute node (`gpu-node-40`) is firewalled behind the cluster, you must tunnel the ports backward to your laptop securely.
-Open a new terminal on your **LOCAL LAPTOP** and run:
+## Phase 5: Edit the SLURM Script Paths
+
+While still connected to the VSC cluster, open the sbatch file and update the paths:
+
 ```bash
-# Replace gpu-node-40 with the actual node from step 4
-# Replace your_username@hpc.domain.edu with your real login node credentials
-ssh -N -L 5173:gpu-node-40:5173 -L 8000:gpu-node-40:8000 your_username@hpc.domain.edu
+cd $VSC_SCRATCH/Manuscript-Assist-GPT-OSS-20b
+nano Singularity/run_agents_l40s.sbatch
 ```
 
-Keep that terminal open! Now open Chrome on your laptop and type:
-`http://localhost:5173`
+Change these two lines at the top to match YOUR cluster paths:
+```bash
+PROJECT_DIR="$VSC_SCRATCH/Manuscript-Assist-GPT-OSS-20b"
+MODELS_DIR="$VSC_SCRATCH/models"
+```
 
-You are now successfully interacting with the A100 GPU cluster through the Singularity container as if it were running natively on your laptop!
+Also update the `#SBATCH --partition=` line to match your cluster's GPU partition name. Common VSC partition names:
+- KU Leuven wICE: `gpu` or `gpu_a100`
+- UGent: `gpu`
+
+Save and exit (`Ctrl+O`, `Enter`, `Ctrl+X` in nano).
+
+---
+
+## Phase 6: Submit the Job to SLURM
+
+```bash
+cd $VSC_SCRATCH/Manuscript-Assist-GPT-OSS-20b
+sbatch Singularity/run_agents_l40s.sbatch
+```
+
+You will see: `Submitted batch job 12345678`
+
+Check which compute node your job landed on:
+```bash
+squeue -u $USER
+```
+
+Look at the `NODELIST` column (e.g., `r23g36`). You will need this node name for the tunnel.
+
+---
+
+## Phase 7: Open an SSH Tunnel from Your Workstation
+
+Go back to your **local workstation terminal** (NOT the VSC session).
+
+You need to tunnel Port 5173 (React UI) and Port 8000 (FastAPI) through the login node to the compute node:
+
+```bash
+# Replace r23g36 with the actual NODELIST from squeue
+# Replace vscXXXXX with your VSC username
+ssh -N \
+    -L 5173:r23g36:5173 \
+    -L 8000:r23g36:8000 \
+    -i ~/.ssh/id_rsa_vsc \
+    vscXXXXX@login.hpc.kuleuven.be
+```
+
+**Keep this terminal open!** It is the live bridge between your browser and the GPU node.
+
+Now open your web browser and visit:
+```
+http://localhost:5173
+```
+
+You are now interacting with the AI agents running on the L40S / H100 GPU node through the Singularity container! 🎉
+
+---
+
+## Monitoring and Debugging
+
+### Check job output in real-time:
+```bash
+# On the VSC login node:
+tail -f $VSC_SCRATCH/Manuscript-Assist-GPT-OSS-20b/slurm_logs/hpc_l40s_*.log
+```
+
+### Check individual agent logs:
+```bash
+tail -f $VSC_SCRATCH/Manuscript-Assist-GPT-OSS-20b/slurm_logs/drafter.log
+tail -f $VSC_SCRATCH/Manuscript-Assist-GPT-OSS-20b/slurm_logs/reviewer.log
+```
+
+### Cancel a running job:
+```bash
+scancel <job_id>
+```
+
+### Check GPU utilization on the compute node:
+```bash
+# First SSH to the compute node from the login node:
+ssh r23g36
+nvidia-smi
+```

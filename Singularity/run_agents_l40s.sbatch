@@ -57,7 +57,7 @@ singularity exec \
     --bind $PROJECT_DIR:/app \
     --pwd /app \
     $CONTAINER \
-    bash -c "cd backend && uvicorn main:app --host 0.0.0.0 --port 8000" > slurm_logs/backend.log 2>&1 &
+    bash -c "cd /app && python3 -m uvicorn backend.main:app --host 0.0.0.0 --port 8000" > slurm_logs/backend.log 2>&1 &
 
 # 5. Start the React Frontend UI
 echo "[*] Booting React User Interface (Port 5173)..."
