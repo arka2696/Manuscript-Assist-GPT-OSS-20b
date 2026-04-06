@@ -15,6 +15,13 @@
   <a href="#hpc-deployment"><img src="https://img.shields.io/badge/🖥️_HPC-Deployment-green?style=for-the-badge" alt="HPC"/></a>
 </p>
 
+<p align="center">
+  <a href="#"><img src="https://img.shields.io/badge/OpenRouter-94A3B8?logo=openrouter&logoColor=fff" alt="OpenRouter"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/Mistral%20AI-FA520F?logo=mistral-ai&logoColor=fff" alt="Mistral AI"/></a>
+  <a href="#"><img src="https://custom-icon-badges.demolab.com/badge/Qwen-605CEC?logo=qwen&logoColor=fff" alt="Qwen"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/Ollama-fff?logo=ollama&logoColor=000" alt="Ollama"/></a>
+</p>
+
 ---
 
 ## Overview
@@ -23,10 +30,10 @@ NumaScribe is a fully self-hosted, multi-agent AI system for scientific manuscri
 
 ### Key Principles
 
-- **🔒 Absolute Privacy** — All inference runs locally via `llama.cpp`. Your unpublished research never touches third-party servers.
-- **🧠 Multi-Agent Collaboration** — A 31B-parameter Drafter writes, a 14B Reasoning Reviewer critiques, and an 8B Router orchestrates the workflow.
-- **⚡ Hardware-Aware Execution** — NUMA-pinned CPU socket binding and GPU offloading tuned for Dual-Xeon workstations and HPC GPU nodes.
-- **📐 Scientific Rendering** — LaTeX equations, structured Markdown, and KaTeX rendering in the browser.
+- **Absolute Privacy** — All inference runs locally via `llama.cpp`. Your unpublished research never touches third-party servers.
+- **Multi-Agent Collaboration** — A 31B-parameter Drafter writes, a 14B Reasoning Reviewer critiques, and an 8B Router orchestrates the workflow.
+- **Hardware-Aware Execution** — NUMA-pinned CPU socket binding and GPU offloading tuned for Dual-Xeon workstations and HPC GPU nodes.
+- **Scientific Rendering** — LaTeX equations, structured Markdown, and KaTeX rendering in the browser.
 
 ---
 
