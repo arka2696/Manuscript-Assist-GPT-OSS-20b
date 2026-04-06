@@ -1,145 +1,237 @@
-# Multi-Agent Manuscript Assistant
+<p align="center">
+  <img src="images/Numascribe.jpg" alt="NumaScribe Logo" width="280"/>
+</p>
 
-A highly optimized, privacy-first, locally hosted scientific writing assistant. 
+<h1 align="center">NumaScribe</h1>
 
-This repository has been rebuilt specifically for high-end **Dual-Xeon Workstations with GPU support**, entirely sidestepping commercial APIs to maintain absolute data security over unreleased research. 
+<p align="center">
+  <strong>A Privacy-First, Multi-Agent Scientific Writing Assistant</strong><br/>
+  <em>Powered by locally-hosted LLMs on NUMA-optimized hardware — no cloud APIs, no data leaks.</em>
+</p>
 
-It utilizes a **LangGraph** backend to orchestrate a team of specialized AI agents running concurrently via `llama.cpp`. By using exact `numactl` CPU-socket pinning across dual processors, the system prevents interconnect latency and allows the agents (a Drafter, a Reviewer, and a Tool Router) to think parallel to one another.
-
----
-
-## Step 1: Install and Compile `llama.cpp`
-
-Yes, **you do need to install `llama.cpp`** on your workstation first. This is the ultra-fast execution engine that will run your AI models. Because you have an Nvidia GPU and AVX2-capable Xeons, you must compile it with CUDA support to enable layer offloading.
-
-1. Clone the `llama.cpp` repository into your home directory (or somewhere accessible):
-   ```bash
-   cd ~
-   git clone https://github.com/ggml-org/llama.cpp.git
-   cd llama.cpp
-   ```
-2. Resolve NVCC compiler incompatibilities (for CUDA 11.5) by installing a highly stable legacy compiler:
-   ```bash
-   sudo apt-get update
-   sudo apt-get install gcc-10 g++-10
-   ```
-3. Compile the engine to support your CUDA GPU (`GGML_CUDA=ON`). We will strictly bind the compiler to GCC-10 to bypass errors, and utilize 40 processor threads (`-j 40`) for an ultra-fast build:
-   ```bash
-   cmake -B build -DGGML_CUDA=ON -DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10 -DCMAKE_CUDA_HOST_COMPILER=g++-10
-   cmake --build build --config Release -j 40
-   ```
-4. Once compiled, you need to make the `llama-server` binary accessible globally so our scripts can use it. Copy it into your local binaries path:
-   ```bash
-   sudo cp build/bin/llama-server /usr/local/bin/
-   ```
+<p align="center">
+  <a href="#quickstart"><img src="https://img.shields.io/badge/🚀_Quick_Start-Guide-blue?style=for-the-badge" alt="Quick Start"/></a>
+  <a href="#architecture"><img src="https://img.shields.io/badge/🏗️_Architecture-Overview-purple?style=for-the-badge" alt="Architecture"/></a>
+  <a href="#hpc-deployment"><img src="https://img.shields.io/badge/🖥️_HPC-Deployment-green?style=for-the-badge" alt="HPC"/></a>
+</p>
 
 ---
 
-## Step 2: Download the GGUF Models
+## Overview
 
-The architecture expects multiple distinct agent models to fit inside your 128GB of RAM. You will need to download compressed `.gguf` weights from HuggingFace and place them inside a `models/` directory in this project.
+NumaScribe is a fully self-hosted, multi-agent AI system for scientific manuscript authoring. It orchestrates a team of specialized LLM agents — a **Drafter**, a **Reviewer**, and a **Router** — that collaborate through a LangGraph state machine to produce, critique, and refine publication-quality scientific text.
 
-1. Open a terminal in the root of this project and create the directory:
-   ```bash
-   mkdir -p models
-   cd models
-   ```
-2. Download the recommended models (using `wget`):
+### Key Principles
 
-   **The Drafter (Main Writer - Runs on GPU + CPU Socket 0):**
-   ```bash
-   # Using Gemma 4 31B (Advanced reasoning, dense architecture)
-   wget https://huggingface.co/ggml-org/gemma-4-31B-it-GGUF/resolve/main/gemma-4-31B-it-Q4_K_M.gguf -O drafter-model.gguf
-   ```
-
-   **The Reviewer (Critique Agent - Runs purely on CPU Socket 1):**
-   ```bash
-   # Using Ministral 3 14B Reasoning (Highly precise, optimized for logic)
-   wget https://huggingface.co/ggml-org/Ministral-3-14B-Reasoning-2512-GGUF/resolve/main/Ministral-3-14B-Reasoning-2512-Q8_0.gguf -O reviewer-model.gguf
-   ```
-
-   **The Router/RAG Extractor (Runs on CPU Socket 0):**
-   ```bash
-   # Using Gemma 4 8B (Extremely fast, intelligent contextual routing)
-   wget https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-e4b-it-Q4_K_M.gguf -O coordinator-model.gguf
-   ```
+- **🔒 Absolute Privacy** — All inference runs locally via `llama.cpp`. Your unpublished research never touches third-party servers.
+- **🧠 Multi-Agent Collaboration** — A 31B-parameter Drafter writes, a 14B Reasoning Reviewer critiques, and an 8B Router orchestrates the workflow.
+- **⚡ Hardware-Aware Execution** — NUMA-pinned CPU socket binding and GPU offloading tuned for Dual-Xeon workstations and HPC GPU nodes.
+- **📐 Scientific Rendering** — LaTeX equations, structured Markdown, and KaTeX rendering in the browser.
 
 ---
 
-## Step 3: Configure the Core Environment
+## Architecture
 
-1. Rename the environment template to activate it:
-   ```bash
-   cp .env.example .env
-   ```
-2. Open `.env` and change the `JWT_SECRET` to a random, secure password. This is what you will type into the Web UI to log into your laboratory assistant.
+<p align="center">
+  <img src="images/workflow.jpg" alt="NumaScribe System Architecture" width="850"/>
+</p>
+
+<p align="center"><em>Concurrent, hardware-pinned AI execution without external APIs.</em></p>
+
+The system runs three independent `llama.cpp` server instances, each hosting a specialized GGUF model. A FastAPI/LangGraph backend coordinates multi-turn Draft → Review → Revise cycles, while a React frontend provides real-time streaming and scientific rendering.
+
+| Agent | Model | Role | Hardware Target |
+|-------|-------|------|-----------------|
+| **Drafter** | Gemma 4 31B (Q4_K_M) | Primary scientific writer | GPU + CPU Socket 0 |
+| **Reviewer** | Ministral 3 14B Reasoning (Q8_0) | Critical analysis & feedback | CPU Socket 1 |
+| **Router** | Gemma 4 E4B (Q4_K_M) | Task classification & RAG | CPU Socket 0 |
 
 ---
 
-## Step 4: Launching the System
+<a id="quickstart"></a>
+## 🚀 Quick Start
 
-You must start the system in layers (Agents -> Backend API -> User Interface).
+### Prerequisites
 
-### A. Turn on the Agent Engines
-This script utilizes `numactl` to map the models perfectly to your Dual-Xeon 14-core topology.
+- **OS:** Linux (Ubuntu 22.04+ recommended)
+- **Hardware:** NVIDIA GPU with ≥8 GB VRAM; ≥64 GB system RAM
+- **Software:** CUDA Toolkit 11.5+, Node.js v18+, Python 3.10+
+
+### Step 1: Install and Compile `llama.cpp`
+
 ```bash
+cd ~
+git clone https://github.com/ggml-org/llama.cpp.git
+cd llama.cpp
+
+# Install a stable compiler for NVCC compatibility
+sudo apt-get update && sudo apt-get install gcc-10 g++-10
+
+# Build with CUDA support
+cmake -B build -DGGML_CUDA=ON \
+    -DCMAKE_C_COMPILER=gcc-10 \
+    -DCMAKE_CXX_COMPILER=g++-10 \
+    -DCMAKE_CUDA_HOST_COMPILER=g++-10
+cmake --build build --config Release -j $(nproc)
+
+# Make the server binary globally accessible
+sudo cp build/bin/llama-server /usr/local/bin/
+```
+
+### Step 2: Download GGUF Models
+
+```bash
+mkdir -p models && cd models
+
+# Drafter — Gemma 4 31B (GPU-accelerated primary writer)
+wget https://huggingface.co/ggml-org/gemma-4-31B-it-GGUF/resolve/main/gemma-4-31B-it-Q4_K_M.gguf
+
+# Reviewer — Ministral 3 14B Reasoning (CPU-bound critique agent)
+wget https://huggingface.co/ggml-org/Ministral-3-14B-Reasoning-2512-GGUF/resolve/main/Ministral-3-14B-Reasoning-2512-Q8_0.gguf
+
+# Router — Gemma 4 E4B (Fast task classification)
+wget https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-e4b-it-Q4_K_M.gguf
+```
+
+### Step 3: Configure Environment
+
+```bash
+cp .env.example .env
+# Edit .env and set a secure JWT_SECRET (this is your login password)
+```
+
+### Step 4: Launch the System
+
+Start each layer in a **separate terminal**:
+
+```bash
+# Terminal 1 — Agent Engines (NUMA-pinned llama.cpp instances)
 ./scripts/start_agents.sh
-```
-*(Leave this terminal running. It will state "Multi-Agent servers are running.")*
 
-### B. Turn on the Logic Backend (FastAPI / LangGraph)
-Open a **new terminal tab** in the project root:
-```bash
+# Terminal 2 — Backend API (FastAPI + LangGraph orchestrator)
 ./scripts/start_backend.sh
-```
-*(This automatically installs necessary pip packages like `langgraph`, generates your FAISS directories, and starts the API on port 8000).*
 
-### C. Build and Run the Web UI
-Open a **third terminal tab**. The frontend requires Node.js (v18+) to run.
-```bash
-cd frontend
-npm install
-npm run dev
+# Terminal 3 — Web UI (React + Vite)
+cd frontend && npm install && npm run dev
 ```
-*(This will start the local React development server on port 5173).*
+
+Open your browser at **http://localhost:5173** and log in with the credentials from your `.env` file.
 
 ---
 
-## Performance Tuning & Resolved Architecture Errors
+## Remote Access via SSH Tunnel
 
-The shift from the original HPC cluster baseline to a dedicated **Dual-Socket Xeon Workstation (with 8GB Quadro M4000 GPU)** revealed several edge-cases that have been successfully engineered and bypassed:
+If the workstation is headless or you want to access it from a laptop:
 
-1. **NUMA Binding & Overlapping VRAM Conflicts** 
-   - *Error:* `llama.cpp` instances were violently colliding and crashing with `Out Of Memory` errors when trying to aggressively allocate buffers to the GPU. Both the Drafter and the Router attempted to seize 3+ GB of VRAM simultaneously.
-   - *Resolution:* Adjusted `start_agents.sh` to strictly segregate the GPU. We explicitly injected `CUDA_VISIBLE_DEVICES=""` for the Reviewer and Router agents, forcing them to remain purely in the CPU/RAM space. We allocated `-ngl 5` (5 layers) strictly to the Drafter to comfortably fit the Quadro M4000's strict 8GB limit.
-   - *Scaling Note:* We bound the Drafter engine strictly to `-t 14` (the absolute maximum physical FPUs on Socket 0) to avoid hyper-threading bottlenecks and NUMA cross-bridge latency.
-2. **Node.js Engine Conflicts**
-   - *Error:* The frontend threw `EBADENGINE` warnings owing to legacy Node.js v12.
-   - *Resolution:* Upgraded the workstation to Node v20 via `apt`, stabilizing `Vite` and `Rollup` compilation.
-3. **Ghost Process Port-Locking**
-   - *Error:* `start: couldn't bind HTTP server socket, hostname: 127.0.0.1, port: 8001`
-   - *Resolution:* Force-crashing the `start_agents.sh` bash script left zombie instances of `llama-server` alive, permanently hogging the ports. Solved by running `pkill -9 -f llama-server` before attempting fresh initializations.
-4. **Gemma-4 "Thinking" Prefill Bugs (`400 Bad Request`)**
-   - *Error:* `Assistant response prefill is incompatible with enable_thinking.` The LangGraph state array was injecting previous assistant iterations that crashed Gemma's `<think>` token boundaries.
-   - *Resolution:* Rewrote `backend/agents.py` to intercept the LangGraph feedback loop, squashing all Reviewer critiques into a single contiguous `User` message, entirely preventing the Llama format validation crash.
-5. **Real-Time Log Streamer (UI)**
-   - *Feature Added:* The transition to 14-thread CPU restraints meant that a single draft generation could pause the UI for 2–3 minutes. We built a live terminal-emulator in `React` (`App.tsx`) attached to a `/logs/stream` FastAPI endpoint that continuously tails the hardware outputs in real-time, providing immediate visual feedback of the models executing.
-6. **Scientific Markdown Rendering (UI)**
-   - *Feature Added:* The frontend was originally outputting raw, unformatted AI text blocks. We integrated `react-markdown` along with `remark-math` and `rehype-katex` to beautifully render structured scientific formatting, bold elements, headers, and complex LaTeX equations natively in the browser.
+```bash
+# On your laptop:
+./scripts/tunnel.sh YOUR_USERNAME WORKSTATION_IP
+# Example: ./scripts/tunnel.sh arka 192.168.1.50
+```
+
+Then visit **http://localhost:7001** in your laptop browser.
 
 ---
 
-## Step 5: Connecting from your Laptop
+<a id="hpc-deployment"></a>
+## 🖥️ HPC Deployment (Singularity / Apptainer)
 
-If you are working from a laptop and want to access the assistant running on the workstation, use the included SSH tunnel script.
+NumaScribe is fully containerized for HPC clusters with SLURM job schedulers.
 
-On your **LAPTOP terminal**, run:
+### Supported GPU Configurations
+
+| GPU | VRAM | All Agents on GPU? | SBATCH Script |
+|-----|------|---------------------|---------------|
+| NVIDIA L40S | 48 GB | ✅ Yes (all 3 agents) | `run_agents_l40s.sbatch` |
+| NVIDIA H100 | 80 GB | ✅ Yes (all 3 agents) | `run_agents_l40s.sbatch` |
+| NVIDIA A100 | 40/80 GB | ✅ Yes | `run_agents.sbatch` |
+
+### Quick HPC Workflow
+
 ```bash
-./scripts/tunnel.sh YOUR_LINUX_USERNAME WORKSTATION_IP_ADDRESS
+# 1. Build the container locally (requires sudo)
+cd Singularity && ./hpc_build.sh
+
+# 2. Transfer to the cluster
+rsync -avzP . user@login.hpc.institution.be:$SCRATCH/NumaScribe/
+
+# 3. Download models directly on the cluster
+ssh user@login.hpc.institution.be
+mkdir -p $SCRATCH/models && cd $SCRATCH/models
+wget <model_urls>
+
+# 4. Submit the SLURM job
+sbatch Singularity/run_agents_l40s.sbatch
+
+# 5. Open SSH tunnel from your laptop
+ssh -N -L 5173:NODE:5173 -L 8000:NODE:8000 user@login.hpc.institution.be
+
+# 6. Open http://localhost:5173
 ```
-*(Example: `./scripts/tunnel.sh arka 192.168.1.50`)*
 
-Once connected, simply open your laptop's web browser and go to:
-**http://localhost:7001**
+> 📖 See [`Singularity/HPC_INSTRUCTIONS.md`](Singularity/HPC_INSTRUCTIONS.md) for the complete VSC-specific deployment guide.
 
-You will be greeted by the secure login screen. Enter any username alongside the `JWT_SECRET` password you set in your `.env` file, and you are ready to write!
+---
+
+## Engineering Decisions & Resolved Issues
+
+<details>
+<summary><strong>🔧 Click to expand the full technical changelog</strong></summary>
+
+### 1. NUMA Binding & VRAM Isolation
+- **Problem:** Multiple `llama.cpp` instances collided on GPU VRAM, causing OOM crashes.
+- **Fix:** Injected `CUDA_VISIBLE_DEVICES=""` for CPU-only agents. Pinned the Drafter to `-ngl 5` layers for 8GB Quadro cards, or `-ngl 99` for 48GB L40S/H100 nodes.
+
+### 2. Gemma-4 "Thinking" Prefill Bug (`400 Bad Request`)
+- **Problem:** LangGraph's state array injected prior assistant messages that crashed Gemma's `<think>` token boundaries.
+- **Fix:** Rewrote `backend/agents.py` to flatten Reviewer feedback into a single contiguous User message, preventing format validation errors.
+
+### 3. CUDA Stub Linking in Singularity
+- **Problem:** `libcuda.so.1: undefined reference to cuMemCreate` during container builds — the CUDA driver doesn't exist at build time.
+- **Fix:** Created temporary `libcuda.so.1` symlinks to CUDA stubs and injected explicit `CMAKE_EXE_LINKER_FLAGS` during the cmake phase.
+
+### 4. `passlib` / `bcrypt` 4.x Incompatibility
+- **Problem:** Container ships `bcrypt` 4.x which removed the `__about__` attribute, breaking `passlib.hash.bcrypt`.
+- **Fix:** Replaced `passlib` with direct `bcrypt.hashpw()` / `bcrypt.checkpw()` calls.
+
+### 5. Real-Time Log Streaming
+- **Feature:** Built a live terminal emulator in React connected to a `/logs/stream` FastAPI endpoint, providing real-time GPU execution feedback during long generation runs.
+
+### 6. Scientific Markdown + LaTeX Rendering
+- **Feature:** Integrated `react-markdown`, `remark-math`, and `rehype-katex` for native browser rendering of equations, tables, and formatted scientific text.
+
+</details>
+
+---
+
+## Project Structure
+
+```
+NumaScribe/
+├── backend/              # FastAPI + LangGraph agent orchestrator
+│   ├── main.py           # API endpoints and streaming
+│   ├── agents.py         # Drafter/Reviewer/Router node definitions
+│   ├── llm_client.py     # llama.cpp HTTP client
+│   └── auth.py           # JWT authentication
+├── frontend/             # React + Vite scientific UI
+│   └── src/App.tsx       # Main application with KaTeX rendering
+├── scripts/              # Launch and tunnel scripts
+├── Singularity/          # HPC container definitions
+│   ├── manuscript_hpc.def
+│   ├── run_agents_l40s.sbatch
+│   └── HPC_INSTRUCTIONS.md
+├── models/               # GGUF model weights (git-ignored)
+└── images/               # Logo and architecture diagrams
+```
+
+---
+
+## License
+
+This project is open-source. See [LICENSE](LICENSE) for details.
+
+---
+
+<p align="center">
+  <em>Built for researchers who refuse to upload their unpublished data to the cloud.</em>
+</p>
