@@ -4,7 +4,7 @@ import jwt
 from typing import Optional
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from passlib.hash import bcrypt
+import bcrypt as _bcrypt
 
 JWT_SECRET = os.getenv("JWT_SECRET", "change_me")
 JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "2880"))
@@ -12,8 +12,9 @@ JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "2880"))
 security = HTTPBearer()
 
 # Demo user store: username=andrew, password=password123
+_pwd = "password123".encode("utf-8")
 USERS = {
-    "andrew": bcrypt.hash("password123")
+    "andrew": _bcrypt.hashpw(_pwd, _bcrypt.gensalt()).decode("utf-8")
 }
 
 def create_token(sub: str) -> str:
@@ -24,7 +25,9 @@ def create_token(sub: str) -> str:
 
 def verify_password(username: str, password: str) -> bool:
     hashed = USERS.get(username)
-    return bool(hashed and bcrypt.verify(password, hashed))
+    if not hashed:
+        return False
+    return _bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
 
 def require_auth(creds: HTTPAuthorizationCredentials = Depends(security)) -> str:
     token = creds.credentials
