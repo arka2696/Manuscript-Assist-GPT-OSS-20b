@@ -27,27 +27,41 @@ async def vision_node(state: AgentState):
     return {"vision_analysis": analysis}
 
 async def drafter_node(state: AgentState):
-    """The Drafter Agent takes instructions (and feedback) and generates scientific text."""
-    sys_msg = {"role": "system", "content": "You are a professional scientific writer. Write accurately."}
+    """The Drafter Agent takes instructions (and feedback) and generates elaborate scientific text."""
+    sys_msg = {
+        "role": "system", 
+        "content": "You are a professional scientific writer and editor. Your task is to expand on provided research and generate elaborate, publication-quality manuscript sections."
+    }
     
-    # Flatten the user history to prevent Gemma-4 multi-turn template errors
-    user_history = "\\n".join([m["content"] for m in state["messages"] if m["role"] == "user"])
+    # Flatten the user history to ensure the model sees all 11+ pages of context
+    user_history = "\n".join([m["content"] for m in state["messages"] if m["role"] == "user"])
+    
     if state.get("feedback"):
-        user_history += f"\\n\\nReviewer Feedback: Please revise the draft based strictly on this critique: {state['feedback']}"
+        user_history += f"\n\nCRITICAL REVISION FEEDBACK:\n{state['feedback']}\nPlease incorporate the above feedback strictly into the new draft."
         
     response = await chat_agent(role="drafter", messages=[sys_msg, {"role": "user", "content": user_history}])
     
-    # Strip <think> tags from the final saved message if present to keep the UI clean
+    # Strip <think> tags from the final saved message
     clean_response = response.split("</think>")[-1].strip() if "</think>" in response else response
     
     return {"messages": [{"role": "assistant", "content": clean_response, "name": "drafter"}], 
             "revision_count": state.get("revision_count", 0) + 1}
 
 async def reviewer_node(state: AgentState):
-    """The Reviewer Agent analyzes the Drafter's output for quality/citations."""
+    """The Reviewer Agent analyzes the Drafter's output against the full original context."""
     latest_draft = state["messages"][-1]["content"] if state["messages"] else ""
     
-    prompt = f"Critique this scientific draft. If it is excellent, reply 'APPROVE'. If it needs changes, list the changes. Draft: {latest_draft}"
+    # Get the original context (e.g. the 11 pages of results/methods)
+    user_context = "\n".join([m["content"] for m in state["messages"] if m["role"] == "user"])
+    
+    prompt = (
+        f"SOURCE CONTEXT (Preliminary Draft/Results):\n{user_context}\n\n"
+        f"NEWLY GENERATED SECTION:\n{latest_draft}\n\n"
+        "TASK: Critique the 'NEWLY GENERATED SECTION' for scientific accuracy, depth, and how well it logically follows the 'SOURCE CONTEXT'. "
+        "Check for consistency in nomenclature and metrics. "
+        "If the section is excellent and ready for publication, reply 'APPROVE'. Otherwise, list specific improvements."
+    )
+    
     response = await chat_agent(role="reviewer", messages=[{"role": "user", "content": prompt}])
     
     status = "approved" if "APPROVE" in response else "revise"

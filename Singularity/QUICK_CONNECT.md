@@ -16,19 +16,31 @@ You will be prompted for your SSH key passphrase. After entering it, you will la
 
 ---
 
-## 2. Submit the SLURM Job
+## 2. Submit the Job
 
-On the HPC login node, navigate to the project and launch the job:
+On the HPC login node, navigate to the project and launch the job.
 
+### Option A: Standard SLURM (Standard/L40S)
 ```bash
 cd $VSC_SCRATCH/Manuscript-Assist-GPT-OSS-20b
 sbatch Singularity/run_agents_l40s.sbatch
 ```
 
+### Option B: Torque/PBS (A100 / Hortense)
+Wait for the `module` to be swapped if necessary, then submit:
+```bash
+cd $VSC_SCRATCH/Manuscript-Assist-GPT-OSS-20b
+qsub Singularity/run_agents_a100.sbatch
+```
+
 Check which compute node your job landed on:
 
 ```bash
+# For SLURM:
 squeue -u vsc11013
+
+# For Torque:
+qstat -u vsc11013
 ```
 
 Look at the **NODELIST** column (e.g., `node511`).

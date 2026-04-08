@@ -34,7 +34,9 @@ CUDA_VISIBLE_DEVICES=0 singularity exec --nv \
     --bind $PROJECT_DIR:/app \
     $CONTAINER \
     llama-server -m /models/gemma-4-31B-it-Q4_K_M.gguf \
-    --port 8001 -c 65536 -ngl 99 -t 16 --flash-attn > slurm_logs/drafter.log 2>&1 &
+    --port 8001 -c 65536 -ngl 99 -t 16 \
+    --np 1 --batch-size 4096 --ubatch-size 1024 \
+    --flash-attn on > slurm_logs/drafter.log 2>&1 &
 
 # ============================================================
 # 2. REVIEWER (Port 8002) — GPU 1 (A100 80GB)
@@ -46,7 +48,9 @@ CUDA_VISIBLE_DEVICES=1 singularity exec --nv \
     --bind $PROJECT_DIR:/app \
     $CONTAINER \
     llama-server -m /models/Ministral-3-14B-Reasoning-2512-Q8_0.gguf \
-    --port 8002 -c 16384 -ngl 99 -t 16 --flash-attn > slurm_logs/reviewer.log 2>&1 &
+    --port 8002 -c 16384 -ngl 99 -t 16 \
+    --batch-size 2048 \
+    --flash-attn on > slurm_logs/reviewer.log 2>&1 &
 
 # ============================================================
 # 3. ROUTER (Port 8003) — GPU 1 (shares with Reviewer)
@@ -58,7 +62,7 @@ CUDA_VISIBLE_DEVICES=1 singularity exec --nv \
     --bind $PROJECT_DIR:/app \
     $CONTAINER \
     llama-server -m /models/gemma-4-e4b-it-Q4_K_M.gguf \
-    --port 8003 -c 8192 -ngl 99 -t 8 --flash-attn > slurm_logs/router.log 2>&1 &
+    --port 8003 -c 8192 -ngl 99 -t 8 --flash-attn on > slurm_logs/router.log 2>&1 &
 
 echo "[*] Waiting 90 seconds for full VRAM allocation across all models..."
 sleep 90

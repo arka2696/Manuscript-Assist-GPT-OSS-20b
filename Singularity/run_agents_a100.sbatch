@@ -1,11 +1,13 @@
 #!/bin/bash
-#SBATCH --job-name=manuscript_ai_a100
-#SBATCH --partition=gpu
-#SBATCH --gres=gpu:a100:1              # Request 1x A100 SXM4 80GB
-#SBATCH --cpus-per-task=32             # 32 CPU Cores
-#SBATCH --mem=128G                     # 128GB RAM
-#SBATCH --time=24:00:00                # 24 hour runtime
-#SBATCH --output=slurm_logs/hpc_a100_%j.log
+#PBS -N manuscript_ai_a100
+#PBS -l nodes=1:gpus=1:ppn=32
+#PBS -l walltime=06:00:00
+#PBS -o slurm_logs/hpc_a100.log
+#PBS -e slurm_logs/hpc_a100.err
+#PBS -A gpr_compute_2024_300       # IMPORTANT: Replace with your actual project code (e.g., lp_hpc_biotech)
+
+# Switch to the A100 GPU partition module
+module swap cluster/dodrio/gpu_rome_a100_80_rhel9
 
 # Ensure output directory exists
 mkdir -p slurm_logs
@@ -49,7 +51,10 @@ singularity exec --nv \
     -c 131072 \
     -ngl 99 \
     -t 16 \
-    --flash-attn \
+    --np 1 \
+    --batch-size 4096 \
+    --ubatch-size 1024 \
+    --flash-attn on \
     > slurm_logs/drafter.log 2>&1 &
 
 # 2. REVIEWER — 16K Context (enough for full review passes)
@@ -63,7 +68,8 @@ singularity exec --nv \
     -c 16384 \
     -ngl 99 \
     -t 16 \
-    --flash-attn \
+    --batch-size 2048 \
+    --flash-attn on \
     > slurm_logs/reviewer.log 2>&1 &
 
 # 3. ROUTER — 4K Context (fast classification, doesn't need more)
@@ -77,7 +83,7 @@ singularity exec --nv \
     -c 4096 \
     -ngl 99 \
     -t 4 \
-    --flash-attn \
+    --flash-attn on \
     > slurm_logs/router.log 2>&1 &
 
 echo "[*] Waiting 120 seconds for full 128K VRAM allocation..."
