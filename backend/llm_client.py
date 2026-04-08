@@ -10,7 +10,7 @@ AGENT_ENDPOINTS = {
 }
 
 NANOBANA_API_KEY = os.getenv("NANOBANA_API_KEY")
-DEFAULT_MAX_TOKENS = int(os.getenv("MAX_TOKENS", "4096"))
+DEFAULT_MAX_TOKENS = int(os.getenv("MAX_TOKENS", "20000"))
 DEFAULT_TEMPERATURE = float(os.getenv("TEMPERATURE", "0.2"))
 
 async def chat_agent(role: str, messages: List[Dict], max_tokens: int = DEFAULT_MAX_TOKENS,

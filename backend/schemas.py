@@ -12,7 +12,7 @@ class LoginRequest(BaseModel):
 class ChatRequest(BaseModel):
     messages: List[dict]
     tools: Optional[List[str]] = None
-    max_tokens: int = 4096
+    max_tokens: int = 20000
     temperature: float = 0.2
     top_p: float = 0.95
 

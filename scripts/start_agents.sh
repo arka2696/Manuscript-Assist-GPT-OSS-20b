@@ -12,7 +12,7 @@ numactl --cpunodebind=0 --localalloc llama-server \
   --model models/drafter-model.gguf \
   --port 8001 \
   --n-gpu-layers 5 \
-  -c 4096 \
+  -c 24576 \
   -t 14 \
   > slurm_logs/drafter.log 2>&1 &
 
