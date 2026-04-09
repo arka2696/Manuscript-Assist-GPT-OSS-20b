@@ -89,6 +89,7 @@ async def run_batch():
             generated_text = data["choices"][0]["message"]["content"]
             
             # 3. Save Output
+            os.makedirs(OUTPUT_DIR, exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_filename = os.path.join(OUTPUT_DIR, f"GLM5_Manuscript_{timestamp}.md")
             
