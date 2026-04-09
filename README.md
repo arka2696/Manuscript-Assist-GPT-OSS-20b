@@ -82,6 +82,10 @@ cmake -B build -DGGML_CUDA=ON \
 cmake --build build --config Release -j $(nproc)
 
 #If you have new GPU (eg NVIDIA RTX A4000 with CC 8.6+) you ned to build differently
+
+#To know compute capacity of current GPU:
+nvidia-smi --query-gpu=name,compute_cap --format=csv
+
 # First, clear the broken cache again
 rm -rf build
 
