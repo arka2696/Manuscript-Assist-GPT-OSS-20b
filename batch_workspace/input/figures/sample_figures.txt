@@ -1,0 +1,8 @@
+Figure 1: Confocal microscopy showing microglial activation states.
+Blue = DAPI (Nuclei)
+Green = Iba1 (Microglia)
+Red = Beta-amyloid plaques.
+The images demonstrate a clear overlap of green and red signals in the XYZ-123 treated group, indicating active phagocytosis.
+
+Figure 2: Morris Water Maze results.
+Escape latency for the XYZ-123 group was 42.5 seconds on Day 5, compared to 43.1 seconds for the Vehicle group. P-value = 0.85 (Not significant).

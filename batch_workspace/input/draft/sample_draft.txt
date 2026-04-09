@@ -1,0 +1,4 @@
+Neuroinflammation is increasingly recognized as a key driver of neurodegenerative diseases. 
+Recent studies have highlighted the role of microglial activation in clearing beta-amyloid plaques. 
+However, chronic activation can lead to synaptic pruning and neuronal death. In our study, we observed a 45% reduction in plaque burden when administering the compound XYZ-123.
+Despite this reduction, cognitive tests on the murine models did not show statistically significant improvement after 12 weeks.

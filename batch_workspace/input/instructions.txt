@@ -1,5 +1,1 @@
-# User Instructions
-# Write your detailed instructions here. For example:
-# "Please elaborate the discussion section based on the provided results and figure descriptions. Ensure you address the relationship between Pathway A and Pathway B."
-
-Please draft an elaborate and comprehensive Discussion section based on the provided manuscript draft and figure descriptions.
+Write a short, engaging one-paragraph discussion based ONLY on the provided draft and figure descriptions. Address the discrepancy between the plaque reduction (Figure 1) and the lack of cognitive improvement (Figure 2). Suggest one possible reason for this outcome.
