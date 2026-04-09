@@ -81,6 +81,21 @@ cmake -B build -DGGML_CUDA=ON \
     -DCMAKE_CUDA_HOST_COMPILER=g++-10
 cmake --build build --config Release -j $(nproc)
 
+#If you have new GPU (eg NVIDIA RTX A4000 with CC 8.6+) you ned to build differently
+# First, clear the broken cache again
+rm -rf build
+
+# Run CMake with the specific architecture
+cmake -B build -DGGML_CUDA=ON \
+    -DCMAKE_C_COMPILER=gcc-10 \
+    -DCMAKE_CXX_COMPILER=g++-10 \
+    -DCMAKE_CUDA_HOST_COMPILER=g++-10 \
+    -DCMAKE_CUDA_COMPILER=/usr/local/cuda-12.8/bin/nvcc \
+    -DCMAKE_CUDA_ARCHITECTURES=86
+
+#Build
+cmake --build build --config Release -j $(nproc)
+
 # Make the server binary globally accessible
 sudo cp build/bin/llama-server /usr/local/bin/
 ```
