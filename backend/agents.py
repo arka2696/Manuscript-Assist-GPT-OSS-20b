@@ -80,8 +80,11 @@ def build_manuscript_graph():
     
     builder.set_entry_point("vision")
     builder.add_edge("vision", "drafter")
-    builder.add_edge("drafter", "reviewer")
-    builder.add_conditional_edges("reviewer", router_logic, {END: END, "drafter": "drafter"})
+    
+    # Bypass Reviewer for GLM-5 single-shot generation
+    builder.add_edge("drafter", END)
+    # builder.add_edge("drafter", "reviewer")
+    # builder.add_conditional_edges("reviewer", router_logic, {END: END, "drafter": "drafter"})
     
     return builder.compile()
 
