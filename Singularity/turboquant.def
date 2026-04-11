@@ -5,29 +5,37 @@ From: nvidia/cuda:12.1.1-devel-ubuntu22.04
     # Prevent interactive prompts
     export DEBIAN_FRONTEND=noninteractive
     
-    # 1. System Dependencies
+    # 1. System Dependencies & Python 3.11
+    apt-get update && apt-get install -y software-properties-common
+    add-apt-repository ppa:deadsnakes/ppa -y
     apt-get update && apt-get install -y \
         build-essential \
         cmake \
         git \
         wget \
         curl \
-        python3 \
+        python3.11 \
+        python3.11-dev \
+        python3.11-venv \
         python3-pip \
         nano \
         && rm -rf /var/lib/apt/lists/*
+        
+    # Set default python version to 3.11
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
         
     # 2. Node.js (For the NumaScribe React Frontend)
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
     apt-get install -y nodejs
     
     # 3. Python Dependencies (FastAPI, LangGraph, Open-WebUI)
-    pip3 install --no-cache-dir \
-        fastapi \
-        uvicorn \
-        httpx \
-        langgraph \
-        langchain-core \
+    python3.11 -m pip install --upgrade pip
+    python3.11 -m pip install --no-cache-dir \
+        fastapi uvicorn httpx pydantic python-multipart \
+        langgraph langchain langchain-core \
+        faiss-cpu sentence-transformers \
+        pypdf bibtexparser citeproc-py biopython \
+        python-jose passlib bcrypt \
         open-webui
         
     # 4. Experimental LLAMA.CPP (TurboQuant Fork)
@@ -35,6 +43,11 @@ From: nvidia/cuda:12.1.1-devel-ubuntu22.04
     git clone https://github.com/TheTom/llama-cpp-turboquant.git
     cd llama-cpp-turboquant
     git checkout feature/turboquant-kv-cache
+    
+    # Fix for Singularity missing NVIDIA drivers during %post phase
+    # Hardlink the stub directly into the system compiler path so 'ld' always finds it
+    ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/lib/x86_64-linux-gnu/libcuda.so.1
+    ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/lib/x86_64-linux-gnu/libcuda.so
     
     # Compile with CUDA 12
     cmake -B build -DGGML_CUDA=ON -DCMAKE_BUILD_TYPE=Release

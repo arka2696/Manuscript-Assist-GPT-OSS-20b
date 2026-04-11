@@ -39,7 +39,7 @@ async def chat_agent(role: str, messages: List[Dict], max_tokens: int = DEFAULT_
         "stream": False,
     }
     
-    async with httpx.AsyncClient(timeout=300.0) as client:
+    async with httpx.AsyncClient(timeout=None) as client:
         r = await client.post(f"{endpoint}/chat/completions", json=payload, headers=headers)
         r.raise_for_status()
         data = r.json()

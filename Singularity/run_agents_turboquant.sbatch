@@ -55,10 +55,18 @@ export OPENAI_API_BASE_URL="http://127.0.0.1:8001/v1"
 export OPENAI_API_KEY="sk-dummy"
 export WEBUI_AUTH="False"
 export DO_NOT_TRACK="True"
+export DATA_DIR="/app/open_webui_data"
+
+mkdir -p "$PROJECT_DIR/open_webui_data"
 
 singularity exec \
     --bind $PROJECT_DIR:/app \
     --pwd /app \
+    --env OPENAI_API_BASE_URL=$OPENAI_API_BASE_URL \
+    --env OPENAI_API_KEY=$OPENAI_API_KEY \
+    --env WEBUI_AUTH=$WEBUI_AUTH \
+    --env DO_NOT_TRACK=$DO_NOT_TRACK \
+    --env DATA_DIR=$DATA_DIR \
     $CONTAINER \
     bash -c "open-webui serve --host 0.0.0.0 --port 8080" > slurm_logs/turbo_openwebui.log 2>&1 &
 

@@ -8,29 +8,37 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
-# 1. System Dependencies
-RUN apt-get update && apt-get install -y \
+# 1. System Dependencies & Python 3.11
+RUN apt-get update && apt-get install -y software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa -y && \
+    apt-get update && apt-get install -y \
     build-essential \
     cmake \
     git \
     wget \
     curl \
-    python3 \
+    python3.11 \
+    python3.11-dev \
+    python3.11-venv \
     python3-pip \
     nano \
     && rm -rf /var/lib/apt/lists/*
+
+# Set default python version to 3.11
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 
 # 2. Node.js (For the NumaScribe React Frontend)
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs
 
 # 3. Python Dependencies (FastAPI, LangGraph, Open-WebUI)
-RUN pip3 install --no-cache-dir \
-    fastapi \
-    uvicorn \
-    httpx \
-    langgraph \
-    langchain-core \
+RUN python3.11 -m pip install --upgrade pip && \
+    python3.11 -m pip install --no-cache-dir \
+    fastapi uvicorn httpx pydantic python-multipart \
+    langgraph langchain langchain-core \
+    faiss-cpu sentence-transformers \
+    pypdf bibtexparser citeproc-py biopython \
+    python-jose passlib bcrypt \
     open-webui
 
 # 4. Experimental LLAMA.CPP (TurboQuant Fork)
@@ -38,6 +46,8 @@ WORKDIR /opt
 RUN git clone https://github.com/TheTom/llama-cpp-turboquant.git && \
     cd llama-cpp-turboquant && \
     git checkout feature/turboquant-kv-cache && \
+    ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/lib/x86_64-linux-gnu/libcuda.so.1 && \
+    ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/lib/x86_64-linux-gnu/libcuda.so && \
     cmake -B build -DGGML_CUDA=ON -DCMAKE_BUILD_TYPE=Release && \
     cmake --build build -j $(nproc) && \
     ln -s /opt/llama-cpp-turboquant/build/bin/llama-server /usr/local/bin/llama-server && \
